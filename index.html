@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JSON TO CSV</title>
+    <link href="./assets/jquery.json-viewer.css" type="text/css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+        integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.16/dist/sweetalert2.min.css" rel="stylesheet">
+    <style>
+        .table td, .table th {
+            font-size: 12px !important;
+        }
+        .select2-selection {
+            -webkit-box-shadow: 0;
+            box-shadow: 0;
+            background-color: #fff;
+            border: 0;
+            border-radius: 0;
+            color: #555555;
+            font-size: 14px;
+            outline: 0;
+            min-height: 38px;
+            text-align: left;
+        }
+        .select2-selection__rendered {
+            margin: 5px;
+        }
+        .select2-selection__arrow {
+            margin: 5px;
+        }
+        label.onex-form-label {
+            font-weight: 600;
+            color: #acacac;
+        }
+        label em, .onex-error, .onex-error-label {
+            color: #dc3545 !important;
+        }
+        span.select2-custom-error {
+            border: 1px solid #dc3545;
+            border-radius: 5px;
+        }
+        .onex-error {
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container mt-3">
+        <div class="row mb-5">
+            <div class="col-md-12">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h1><strong><i class="fas fa-file-export"></i> UPLOAD JSON TO JSON & TABLE - Rendering</strong></h1>
+                        <hr />
+                    </div>
+                </div>
+                <form name="frm" id="frmx" action="" method="POST">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label for="jsonFileUpload" class="onex-form-label">Upload JSON File: <em>*</em></label>
+                            <input type="file" name="json_file" class="form-control" id="jsonFileUpload" 
+                            accept="application/json" required="required" />
+                        </div>        
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary" id="uploadJsonFileBtn">Upload</button>
+                            <button type="button" class="btn btn-danger" id="uploadClearFileBtn" onclick="location.reload();">Clear</button>
+                            <button type="button" class="btn btn-success" id="downloadJsonBtn" style="display: none;">Download JSON</button>
+                            <button type="button" class="btn btn-success" id="downloadCsvBtn" style="display: none;">Download CSV</button>
+                        </div>
+                    </div>
+                </form>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h3>Table Rendering <span id="tableCount">()</span></h3>
+                        <div class="table-responsive" id="renderTable"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h3>Json Rendering <span id="jsonCount">()</span></h3>
+                        <!-- hold raw json for download purpose-->
+                        <input type="hidden" id="convertedJson" />
+                        <!-- Rendering the json content -->
+                        <pre id="json-renderer"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"
+        integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    <script src="./assets/jquery.json-viewer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/additional-methods.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.16/dist/sweetalert2.all.min.js"></script>
+    <script>
+        $(document).ready(function () {
+
+            /** SweetAlert2 loading */
+            const displayLoading = (timer = 3000, title = 'Please Wait...', text = "System Processing Your Request") => {
+                Swal.fire({
+                    title: title,
+                    text: text,
+                    allowEscapeKey: false,
+                    allowOutsideClick: false,
+                    timer: timer,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    }
+                });
+            }
+
+            /** SweetAlert2 like toast */
+            const displayToast = () => {
+                Swal.fire({
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Its copied!',
+                    showConfirmButton: false,
+                    timer: 1000
+                });
+            }
+
+            $("#frmx").validate({
+                errorClass: 'onex-error',
+                errorElement: 'div',
+                rules: {
+                    json_file: {
+                        required: true,
+                        extension: 'json'
+                    }
+                },
+                messages: {
+                    json_file: {
+                        required: 'Please upload json file',
+                        extension: 'Only accept .json',
+                        accept: 'Only accept .json'
+                    }
+                },
+                errorPlacement: function (error, element) {
+                    if(element.hasClass('onex-select2')) {
+                        error.insertAfter(element.parent().find('span.select2-container'));
+                    } else {
+                        error.insertAfter(element);
+                    }
+                },
+                highlight: function (element) {
+                    $(element).removeClass('is-valid').addClass('is-invalid');
+                    $(element).parent().find('.onex-form-label').addClass('onex-error-label');
+                    if(element.type == 'select-one') {
+                        $(element).next('span.select2-container').addClass('select2-custom-error');
+                    }
+                },
+                unhighlight: function (element) {
+                    $(element).removeClass('is-invalid').addClass('is-valid');
+                    $(element).parent().find('.onex-form-label').removeClass('onex-error-label');
+                },
+                submitHandler: function (form) {
+                    uploadJsonFile();
+                    return false;
+                }
+            });
+
+            /* Json To HTML Table Create */
+            const jsonTable = (objArr, renderId, appName = '') => {
+
+                /* create table */
+                let _table = document.createElement('table');
+                _table.setAttribute('id', 'dataTable');
+                _table.classList.add('table', 'table-bordered', 'table-striped', 'table-sm');
+
+                if (objArr.length) {
+                    
+                    let firstObjKeys = Object.keys(objArr[0]) || [];
+                    let firstObjValues = Object.values(objArr[0]) || [];
+                    let firstObjKeyLength = parseInt(firstObjKeys.length);
+                    
+
+                    /* create thead & apped to table */
+                    let _thead = document.createElement('thead');
+                    _table.appendChild(_thead);
+
+                    if (appName !== '') {
+                        /* create heading row with colspan td */
+                        let _headingTr = _thead.insertRow();
+                        let _headingTd = _headingTr.insertCell(0);
+                        _headingTd.colSpan = firstObjKeyLength;
+                        _headingTd.innerHTML = `<strong>${appName}</strong> (${objArr.length})`;
+                    }
+
+                    objArr.map((value, index) => {
+
+                        if (index === 0) {
+                            /* add or insert tr within thead */
+                            let _headTr = _thead.insertRow();
+
+                            /* dynamically create th & append to above tr*/
+                            for (let i = 0; i < firstObjKeyLength; i++) {
+                                let _headTh = document.createElement('th');
+                                let _headThText = document.createTextNode(`${firstObjKeys[i].charAt(0).toUpperCase()}${firstObjKeys[i].slice(1)}`);
+                                _headTh.appendChild(_headThText);
+                                _headTr.appendChild(_headTh);
+                            }   
+                        } else {
+                            /* create tbody & append to table */
+                            let _tbody = document.createElement('tbody');
+                                _table.appendChild(_tbody);
+
+                            let _tr = _tbody.insertRow();
+
+                            /* dynamically create td with object value & append to above tr in map loop*/
+                            for (let i = 0; i < firstObjKeyLength; i++) {
+                                let _objKeys = Object.keys(value);
+                                let _objVals = Object.values(value);
+                                let _td = _tr.insertCell(i);
+                                _td.innerHTML = `${_objVals[i]}`;
+                            }
+                        }
+                    });
+                    /* finally table render to html */
+                    document.getElementById(renderId).innerHTML = '';
+                    document.getElementById(renderId).appendChild(_table);
+                } else {
+                    document.getElementById(renderId).innerHTML = `<h4>No Records Found!</h4>`;
+                }
+            }
+
+            function actionButtons(jsonObj) {
+                if(jsonObj.length) {
+                    $('#downloadJsonBtn').show();
+                    $('#downloadCsvBtn').show();
+                } else {
+                    $('#downloadJsonBtn').hide();
+                    $('#downloadCsvBtn').hide();
+                }
+            }
+
+            /*Json Content To CSV content*/
+            function jsonToCsv(jsonData) {
+                let csv = '';
+                // Get the headers
+                let headers = Object.keys(jsonData[0]);
+                csv += headers.join(',') + '\n';
+                // Add the data
+                jsonData.forEach(function (row) {
+                    let data = headers.map(header => row[header]).join(',');
+                    csv += data + '\n';
+                });
+                return csv;
+            }
+
+            let jsonFile = document.querySelector('#jsonFileUpload');
+            
+            /*Get Json File Content From Uploader*/
+            async function uploadJsonFile() {
+                displayLoading();
+                let file = jsonFile.files[0];
+                renderAsJson(file);
+                renderAsTable(file);
+            }
+
+            async function renderAsTable(file) {
+                let reader = new FileReader(file);
+                reader.readAsText(file);
+                reader.onload = async(e) => {
+                    let resultData = e.target.result;
+                    let jsonContent = await JSON.parse(resultData);
+                    console.log('table');
+                    console.log(jsonContent);
+                    jsonTable(jsonContent, 'renderTable');
+                    document.getElementById('tableCount').innerHTML = `(${jsonContent.length})`;
+                    actionButtons(jsonContent);
+                }
+            }
+
+            async function renderAsJson(file) {
+                let reader = new FileReader(file);
+                reader.readAsText(file);
+                reader.onload = async(e) => {
+                    let resultData = e.target.result;
+                    let jsonContent = await JSON.parse(resultData);
+                    console.log(jsonContent);
+                    $('#convertedJson').val(JSON.stringify(jsonContent, null, 4));
+                    $('#json-renderer').jsonViewer(jsonContent);
+                    document.getElementById('jsonCount').innerHTML = `(${jsonContent.length})`;
+                    actionButtons(jsonContent);
+                }
+            }
+
+            /*Download as JSON*/
+            $('#downloadJsonBtn').on('click', function() {
+                const anchor = document.createElement('a');
+                anchor.href = 'data:application/json;charset=utf-8,' + encodeURIComponent($('#convertedJson').val());
+                anchor.download = new Date().toJSON() + '.json' ;
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
+            });
+
+            /*Download as CSV*/
+            $('#downloadCsvBtn').on('click', function() {
+                let content = jsonToCsv(JSON.parse($('#convertedJson').val()));
+                let blob = new Blob([content], { type: 'text/csv' });
+                let url = window.URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = new Date().toJSON() + '.csv' ;
+                document.body.appendChild(a);
+                a.click();
+            });
+        });
+    </script>
+</body>
+
+</html>
