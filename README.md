@@ -2,7 +2,7 @@
 
 ### Check The Application
 
-[https://dev-arindam-roy.github.io/UPLOAD-CSV-TO-JSON-TABLE---Rendering/](https://dev-arindam-roy.github.io/UPLOAD-CSV-TO-JSON-TABLE---Rendering/)
+[https://dev-arindam-roy.github.io/UPLOAD-JSON-TO-JSON-TABLE---Rendering/](https://dev-arindam-roy.github.io/UPLOAD-JSON-TO-JSON-TABLE---Rendering/)
 
 
 ```js
